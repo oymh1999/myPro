@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoltMap 城市电车充电网络</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar" aria-label="平台概览">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">VoltMap Grid</p>
+            <h1>城市电车充电网络</h1>
+          </div>
+        </div>
+        <div class="search">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="搜索站点、区域、道路" autocomplete="off" />
+        </div>
+        <div class="summary" aria-label="实时摘要">
+          <div>
+            <strong id="totalStations">0</strong>
+            <span>站点</span>
+          </div>
+          <div>
+            <strong id="availablePorts">0</strong>
+            <span>可用枪</span>
+          </div>
+          <div>
+            <strong id="avgPrice">0.00</strong>
+            <span>均价 元/度</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard">
+        <aside class="control-panel" aria-label="筛选条件">
+          <div class="panel-block">
+            <div class="section-title">
+              <span>筛选</span>
+              <button id="resetBtn" type="button">重置</button>
+            </div>
+            <label class="field">
+              <span>充电类型</span>
+              <select id="typeFilter">
+                <option value="all">全部</option>
+                <option value="super">超充</option>
+                <option value="fast">快充</option>
+                <option value="slow">慢充</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>最少可用枪</span>
+              <input id="portsFilter" type="range" min="0" max="18" value="0" />
+              <b id="portsValue">0</b>
+            </label>
+            <label class="toggle">
+              <input id="openOnly" type="checkbox" />
+              <span>仅显示营业中</span>
+            </label>
+            <label class="toggle">
+              <input id="routeMode" type="checkbox" checked />
+              <span>显示推荐补能路线</span>
+            </label>
+          </div>
+
+          <div class="panel-block">
+            <div class="section-title">
+              <span>图例</span>
+            </div>
+            <div class="legend">
+              <span><i class="dot super"></i>超充 180kW+</span>
+              <span><i class="dot fast"></i>快充 60-180kW</span>
+              <span><i class="dot slow"></i>慢充 7-60kW</span>
+              <span><i class="pulse"></i>当前选中</span>
+            </div>
+          </div>
+        </aside>
+
+        <section class="map-wrap" aria-label="充电桩地图">
+          <div class="map-toolbar">
+            <button class="icon-btn active" type="button" title="路网视图" aria-label="路网视图">⌁</button>
+            <button class="icon-btn" type="button" title="热力视图" aria-label="热力视图">◌</button>
+            <button class="icon-btn" type="button" title="定位" aria-label="定位">⌖</button>
+          </div>
+          <div id="map" class="map" role="application" aria-label="交互式充电站地图">
+            <svg class="map-base" viewBox="0 0 1000 680" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="water" x1="0" x2="1" y1="0" y2="1">
+                  <stop stop-color="#0c2f4b" />
+                  <stop offset="1" stop-color="#071924" />
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <rect width="1000" height="680" fill="#071116" />
+              <path d="M720 0 C650 120 760 210 690 340 C630 455 735 540 675 680 L1000 680 L1000 0 Z" fill="url(#water)" opacity=".84" />
+              <g class="districts">
+                <path d="M60 70 L315 45 L370 210 L205 285 L45 210 Z" />
+                <path d="M385 55 L670 75 L655 255 L400 235 Z" />
+                <path d="M70 320 L345 275 L390 515 L115 560 Z" />
+                <path d="M420 285 L660 295 L625 590 L430 540 Z" />
+              </g>
+              <g class="roads main-roads">
+                <path d="M40 155 C210 130 345 120 520 140 C650 155 770 200 940 235" />
+                <path d="M95 615 C210 510 310 420 450 350 C565 292 715 265 930 285" />
+                <path d="M250 25 C245 180 285 330 330 485 C350 555 385 625 425 675" />
+                <path d="M575 0 C545 145 520 290 540 430 C555 535 575 610 610 680" />
+              </g>
+              <g class="roads">
+                <path d="M70 245 L645 205" />
+                <path d="M95 420 L650 380" />
+                <path d="M125 520 L670 500" />
+                <path d="M125 60 C190 170 205 325 195 585" />
+                <path d="M435 70 C410 220 420 405 445 600" />
+                <path d="M735 75 C780 165 820 330 800 585" />
+                <path d="M60 350 C255 310 420 315 620 345" />
+              </g>
+              <g id="routeLine" class="route-line"></g>
+            </svg>
+            <div class="map-grid" aria-hidden="true"></div>
+            <div id="stationLayer" class="station-layer"></div>
+          </div>
+        </section>
+
+        <aside class="detail-panel" aria-label="站点详情">
+          <div id="stationDetail" class="station-detail"></div>
+          <div class="station-list-wrap">
+            <div class="section-title">
+              <span>附近站点</span>
+              <small id="resultCount">0 个结果</small>
+            </div>
+            <div id="stationList" class="station-list"></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
